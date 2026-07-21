@@ -1,0 +1,11 @@
+# Core runtime dependencies for the Section 508 Compliance Checker CLI
+#
+# beautifulsoup4 : HTML parsing for the static analysis backend
+# requests       : HTTP client used to fetch live URLs (static backend)
+# selenium       : browser automation for the JavaScript-rendered backend
+#                  (Selenium 4.6+ ships Selenium Manager, which resolves the
+#                  browser driver automatically — no separate driver install)
+
+beautifulsoup4>=4.12,<5
+requests>=2.31,<3
+selenium>=4.16,<5

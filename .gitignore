@@ -1,0 +1,18 @@
+Portfolio.md
+CLAUDE.md
+
+docs/508SME_Analyst_Resume_Template_NoContactInfo.pdf
+
+# Profile README draft belongs in the separate AngComply profile repo, not here
+docs/PROFILE_README_DRAFT.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+build/
+dist/

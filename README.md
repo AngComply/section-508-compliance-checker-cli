@@ -63,13 +63,12 @@ finding produces a structured, human-readable report an analyst can act on.
 
 ## Installation
 
-> **Status:** This project is under active development. The commands below
-> reflect the intended interface; see [Roadmap](#roadmap) for current status.
+Requires **Python 3.10+**.
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/section-508-cli-tool.git
-cd section-508-cli-tool
+git clone https://github.com/AngComply/section-508-compliance-checker-cli.git
+cd section-508-compliance-checker-cli
 
 # Create and activate a virtual environment
 python -m venv .venv
@@ -79,10 +78,18 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Selenium requires a browser driver. The tool targets Chrome/Chromium via
-`chromedriver`. Install a matching driver and ensure it is on your `PATH`, or
-let [`webdriver-manager`](https://pypi.org/project/webdriver-manager/) resolve
-it automatically.
+The `--render selenium` backend drives headless **Chrome/Chromium**, which must
+be installed on the host. The matching driver is resolved automatically by
+[Selenium Manager](https://www.selenium.dev/documentation/selenium_manager/)
+(bundled with Selenium 4.6+), so no separate `chromedriver` install is required.
+The static backend (the default) needs no browser at all.
+
+To run the test suite, install the development dependencies instead:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
 
 ## Usage
 
@@ -112,7 +119,8 @@ python checker.py --url https://example.gov --format markdown --output findings.
 | `--render {static,selenium}` | Rendering backend (default: `static`) |
 | `--format {console,json,markdown}` | Report format (default: `console`) |
 | `--output <path>` | Write the report to a file instead of stdout |
-| `--fail-on {any,error}` | Exit non-zero when issues are found (CI use) |
+| `--fail-on {error,any,none}` | Exit non-zero when issues are found — `error` (default) fails on errors, `any` on any finding, `none` never fails (CI use) |
+| `--timeout <seconds>` | Network timeout for URL fetches (default: 30) |
 
 ### Example output
 
@@ -120,14 +128,17 @@ python checker.py --url https://example.gov --format markdown --output findings.
 Section 508 Compliance Report — https://example.gov
 ============================================================
 [ERROR]  1.1.1  Non-text Content
-         <img src="/logo.png"> is missing an alt attribute
-         → Add descriptive alt text, or alt="" if decorative.
+        Image is missing an alt attribute.
+        <img src="/logo.png"/>
+        → Add descriptive alt text, or alt="" if the image is purely decorative.
 
-[WARN]   2.4.2  Page Titled
-         Document <title> is generic ("Home")
-         → Use a unique, descriptive title for each page.
+[WARNING]  2.4.2  Page Titled
+        The page title 'Home' is generic and non-descriptive.
+        <title>
+        → Use a specific title that distinguishes this page from others.
 
-Summary: 1 error, 1 warning, 6 checks passed
+------------------------------------------------------------
+Summary: 1 error, 1 warning, 6 of 8 checks passed
 ```
 
 ## How this maps to compliance work
@@ -140,14 +151,18 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
 
 ## Roadmap
 
-- [ ] Core checker engine (`checker.py`) and check modules
-- [ ] `requirements.txt` and pinned dependencies
-- [ ] BeautifulSoup static backend
-- [ ] Selenium dynamic backend
-- [ ] JSON and Markdown reporters
+- [x] Core checker engine (`checker.py`) and check modules
+- [x] `requirements.txt` and pinned dependencies
+- [x] BeautifulSoup static backend
+- [x] Selenium dynamic backend
+- [x] JSON and Markdown reporters
+- [x] Unit tests and sample fixtures
 - [ ] Color-contrast analysis (WCAG 1.4.3 / 1.4.11)
-- [ ] Unit tests and sample fixtures
+- [ ] ARIA landmark / region checks
 - [ ] CI workflow
+
+Eight checks ship today, mapped to WCAG 1.1.1, 1.3.1, 2.4.2, 2.4.4, 3.1.1,
+and 4.1.2. See the source in [`section508checker/checks/`](section508checker/checks/).
 
 ## Portfolio context
 

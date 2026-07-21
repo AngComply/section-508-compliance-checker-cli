@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!-- Fixture with one intentional violation per check, plus passing controls,
+     used by the test suite. Do not "fix" the issues here. -->
+<html>
+  <head>
+    <title>Home</title>
+  </head>
+  <body>
+    <!-- Heading outline skips from h1 to h3 -->
+    <h1>Welcome</h1>
+    <h3>Details</h3>
+
+    <!-- Image with no alt (fail) + decorative (pass) + described (pass) -->
+    <img src="/banner.png">
+    <img src="/spacer.gif" alt="">
+    <img src="/logo.png" alt="Company logo">
+
+    <!-- Unlabelled text input (fail) + properly labelled input (pass) -->
+    <input type="text" id="search" placeholder="Search">
+    <label for="email">Email address</label>
+    <input type="email" id="email">
+
+    <!-- Empty link (fail) + generic link (warn) + descriptive link (pass) -->
+    <a href="#"></a>
+    <a href="/report">click here</a>
+    <a href="/about">About our accessibility program</a>
+
+    <!-- Data table without headers (warn) + table with headers (pass) -->
+    <table>
+      <tr><td>Q1</td><td>100</td></tr>
+    </table>
+    <table>
+      <tr><th scope="col">Quarter</th><th scope="col">Revenue</th></tr>
+      <tr><td>Q1</td><td>100</td></tr>
+    </table>
+
+    <!-- Frame with no title (fail) -->
+    <iframe src="/widget"></iframe>
+  </body>
+</html>

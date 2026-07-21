@@ -1,4 +1,5 @@
 """Report assembly and rendering (console, JSON, Markdown)."""
+
 from __future__ import annotations
 
 import json

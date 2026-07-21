@@ -1,4 +1,5 @@
 """Data-table header checks (WCAG 1.3.1 Info and Relationships)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -40,7 +41,7 @@ class TableHeaderCheck(Check):
                     Severity.WARNING,
                     "Data table has no header cells (<th>), so row and column "
                     "relationships are not conveyed.",
-                    "Mark header cells with <th> and set scope=\"col\"/\"row\". "
+                    'Mark header cells with <th> and set scope="col"/"row". '
                     'If the table is purely for layout, add role="presentation".',
                     element_snippet(table),
                 )

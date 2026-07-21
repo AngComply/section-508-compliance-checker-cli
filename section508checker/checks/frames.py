@@ -1,4 +1,5 @@
 """Frame title checks (WCAG 4.1.2 Name, Role, Value; 2.4.1 Bypass Blocks)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -34,8 +35,7 @@ class FrameTitleCheck(Check):
                     Severity.ERROR,
                     f"<{frame.name}> has no title attribute, so its purpose is "
                     "not announced.",
-                    'Add a title describing the frame, e.g. title="Payment '
-                    'form".',
+                    'Add a title describing the frame, e.g. title="Payment form".',
                     element_snippet(frame),
                 )
             )

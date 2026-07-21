@@ -1,4 +1,5 @@
 """End-to-end tests driving the CLI through section508checker.cli.main."""
+
 from __future__ import annotations
 
 import json
@@ -6,9 +7,7 @@ import pathlib
 
 from section508checker.cli import EXIT_FINDINGS, EXIT_OK, main
 
-FIXTURE = str(
-    pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
-)
+FIXTURE = str(pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html")
 
 
 def test_console_run_reports_findings_and_fails_on_error(capsys):

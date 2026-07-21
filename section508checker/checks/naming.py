@@ -5,6 +5,7 @@ name computation. They cannot fully resolve ``aria-labelledby`` references or
 CSS-driven hiding from static markup, so they err toward *not* raising false
 positives when an ARIA hook is present.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

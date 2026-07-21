@@ -1,4 +1,5 @@
 """Unit tests for the individual accessibility checks."""
+
 from __future__ import annotations
 
 import pathlib
@@ -19,9 +20,7 @@ from section508checker.checks.images import ImageAltTextCheck
 from section508checker.checks.links import LinkTextCheck
 from section508checker.checks.tables import TableHeaderCheck
 
-FIXTURE = (
-    pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
-)
+FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
 
 
 def _soup(markup: str) -> BeautifulSoup:

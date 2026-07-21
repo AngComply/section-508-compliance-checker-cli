@@ -1,5 +1,6 @@
 """Link accessibility checks (WCAG 2.4.4 Link Purpose,
 4.1.2 Name, Role, Value)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -54,8 +55,10 @@ class LinkTextCheck(Check):
 
             text = anchor.get_text(strip=True)
 
-            if not text and not has_aria_name(anchor) and not _link_has_image_name(
-                anchor
+            if (
+                not text
+                and not has_aria_name(anchor)
+                and not _link_has_image_name(anchor)
             ):
                 findings.append(
                     self._finding(
@@ -72,8 +75,7 @@ class LinkTextCheck(Check):
                 findings.append(
                     self._finding(
                         Severity.WARNING,
-                        f"Link text {text!r} does not describe the link's "
-                        "destination.",
+                        f"Link text {text!r} does not describe the link's destination.",
                         "Use text that makes sense out of context, e.g. "
                         '"Read the 2024 accessibility report".',
                         element_snippet(anchor),

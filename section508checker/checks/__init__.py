@@ -4,6 +4,7 @@
 check, implement a :class:`~section508checker.checks.base.Check` subclass and
 append it here.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

@@ -4,6 +4,7 @@ A :class:`Check` inspects a parsed HTML document and returns zero or more
 :class:`Finding` objects. Each finding is tied to a specific WCAG success
 criterion so results map cleanly onto Section 508 / VPAT reporting.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

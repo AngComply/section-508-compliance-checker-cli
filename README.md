@@ -42,6 +42,8 @@ finding produces a structured, human-readable report an analyst can act on.
   - Links with no discernible text (WCAG 2.4.4)
   - Tables missing header associations (WCAG 1.3.1)
   - `iframe` elements without a `title` (WCAG 4.1.2)
+  - Insufficient text/background color contrast (WCAG 1.4.3) — evaluated for
+    inline-styled elements; see the note under [Roadmap](#roadmap)
 - **Two rendering backends:**
   - **BeautifulSoup** for fast static-HTML parsing
   - **Selenium** for JavaScript-rendered pages and dynamic content
@@ -157,12 +159,21 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
 - [x] Selenium dynamic backend
 - [x] JSON and Markdown reporters
 - [x] Unit tests and sample fixtures
-- [ ] Color-contrast analysis (WCAG 1.4.3 / 1.4.11)
-- [ ] ARIA landmark / region checks
-- [ ] CI workflow
+- [x] CI workflow (GitHub Actions: ruff lint + pytest matrix)
+- [x] Color-contrast analysis (WCAG 1.4.3) for inline-styled elements
+- [ ] Full-page color contrast via computed styles (Selenium `getComputedStyle`)
+- [ ] Non-text contrast (WCAG 1.4.11) and ARIA landmark / region checks
 
-Eight checks ship today, mapped to WCAG 1.1.1, 1.3.1, 2.4.2, 2.4.4, 3.1.1,
-and 4.1.2. See the source in [`section508checker/checks/`](section508checker/checks/).
+Nine checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 2.4.2, 2.4.4,
+3.1.1, and 4.1.2. See the source in
+[`section508checker/checks/`](section508checker/checks/).
+
+> **Color-contrast scope:** Static HTML only exposes colors set via inline
+> `style` attributes, so the contrast check assesses an element only when both
+> its foreground and an opaque background are determinable inline. Colors from
+> external/embedded CSS or inheritance are skipped rather than guessed (no false
+> positives); full-page evaluation is planned via the Selenium backend's
+> computed styles.
 
 ## Portfolio context
 
@@ -178,4 +189,4 @@ compliance.
 
 ## License
 
-To be determined.
+Released under the [MIT License](LICENSE).

@@ -1,4 +1,5 @@
 """Document-level checks: language (WCAG 3.1.1) and page title (WCAG 2.4.2)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -71,8 +72,7 @@ class PageTitleCheck(Check):
                 self._finding(
                     Severity.ERROR,
                     "The document has no <title> or the title is empty.",
-                    "Add a unique <title> that describes the page's topic or "
-                    "purpose.",
+                    "Add a unique <title> that describes the page's topic or purpose.",
                 )
             ]
         text = title.get_text(strip=True)

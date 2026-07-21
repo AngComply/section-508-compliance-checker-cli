@@ -1,4 +1,5 @@
 """Argument parsing and orchestration for the Section 508 Compliance Checker."""
+
 from __future__ import annotations
 
 import argparse
@@ -125,8 +126,10 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.output, "w", encoding="utf-8") as handle:
                 handle.write(output + "\n")
         except OSError as exc:
-            print(f"Error: could not write report to {args.output}: {exc}",
-                  file=sys.stderr)
+            print(
+                f"Error: could not write report to {args.output}: {exc}",
+                file=sys.stderr,
+            )
             return EXIT_ERROR
         print(f"Report written to {args.output}", file=sys.stderr)
     else:

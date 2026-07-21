@@ -1,4 +1,5 @@
 """End-to-end tests driving the CLI through section508checker.cli.main."""
+
 from __future__ import annotations
 
 import json
@@ -6,9 +7,7 @@ import pathlib
 
 from section508checker.cli import EXIT_FINDINGS, EXIT_OK, main
 
-FIXTURE = str(
-    pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
-)
+FIXTURE = str(pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html")
 
 
 def test_console_run_reports_findings_and_fails_on_error(capsys):
@@ -32,7 +31,7 @@ def test_json_output_is_valid_and_structured(capsys):
     assert exit_code == EXIT_FINDINGS
     payload = json.loads(out)
     assert payload["target"] == FIXTURE
-    assert payload["summary"]["checks_run"] == 8
+    assert payload["summary"]["checks_run"] == 9
     assert payload["summary"]["errors"] >= 1
     assert isinstance(payload["findings"], list)
     assert payload["findings"][0]["severity"] == "error"  # sorted, errors first

@@ -10,6 +10,7 @@ Third-party backends are imported lazily so that file/static usage does not
 require Selenium to be installed, and vice versa. Every failure mode is raised
 as :class:`LoaderError` with an actionable message.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -76,13 +77,10 @@ def _load_static(url: str, timeout: int) -> str:
         response.raise_for_status()
     except requests.exceptions.MissingSchema as exc:
         raise LoaderError(
-            f"'{url}' is not a valid URL. Include the scheme, e.g. "
-            "https://example.gov."
+            f"'{url}' is not a valid URL. Include the scheme, e.g. https://example.gov."
         ) from exc
     except requests.exceptions.Timeout as exc:
-        raise LoaderError(
-            f"Timed out after {timeout}s fetching {url}."
-        ) from exc
+        raise LoaderError(f"Timed out after {timeout}s fetching {url}.") from exc
     except requests.exceptions.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "?"
         raise LoaderError(f"Server returned HTTP {status} for {url}.") from exc

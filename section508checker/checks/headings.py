@@ -1,5 +1,6 @@
 """Heading-structure checks (WCAG 1.3.1 Info and Relationships,
 2.4.6 Headings and Labels)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -28,9 +29,7 @@ class HeadingStructureCheck(Check):
     description = "Headings must be non-empty and nested without skipping levels."
 
     def run(self, soup: "BeautifulSoup") -> list[Finding]:
-        headings = [
-            h for h in soup.find_all(_HEADING_TAGS) if not is_hidden(h)
-        ]
+        headings = [h for h in soup.find_all(_HEADING_TAGS) if not is_hidden(h)]
         if not headings:
             return []
 

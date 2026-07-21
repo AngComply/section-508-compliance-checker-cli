@@ -1,5 +1,6 @@
 """Form-control labelling checks (WCAG 1.3.1 Info and Relationships,
 4.1.2 Name, Role, Value)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -74,14 +75,12 @@ class FormLabelCheck(Check):
             label_hint = ""
             if attr_text(control, "placeholder"):
                 label_hint = (
-                    " A placeholder is present but does not substitute for a "
-                    "label."
+                    " A placeholder is present but does not substitute for a label."
                 )
             findings.append(
                 self._finding(
                     Severity.ERROR,
-                    f"<{control.name}> control has no associated label."
-                    + label_hint,
+                    f"<{control.name}> control has no associated label." + label_hint,
                     "Associate a <label for> element, or add aria-label / "
                     "aria-labelledby.",
                     element_snippet(control),

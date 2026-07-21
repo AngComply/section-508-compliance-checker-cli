@@ -1,4 +1,5 @@
 """Unit tests for the individual accessibility checks."""
+
 from __future__ import annotations
 
 import pathlib
@@ -8,6 +9,12 @@ from bs4 import BeautifulSoup
 
 from section508checker.checks import run_all
 from section508checker.checks.base import Severity
+from section508checker.checks.color import (
+    contrast_ratio,
+    parse_color,
+    relative_luminance,
+)
+from section508checker.checks.contrast import ColorContrastCheck
 from section508checker.checks.document import (
     DocumentLanguageCheck,
     PageTitleCheck,
@@ -19,9 +26,7 @@ from section508checker.checks.images import ImageAltTextCheck
 from section508checker.checks.links import LinkTextCheck
 from section508checker.checks.tables import TableHeaderCheck
 
-FIXTURE = (
-    pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
-)
+FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
 
 
 def _soup(markup: str) -> BeautifulSoup:
@@ -131,9 +136,54 @@ def test_iframe_with_title_passes():
     assert findings == []
 
 
+def test_parse_color_supports_hex_rgb_and_named():
+    assert parse_color("#fff") == (255, 255, 255, 1.0)
+    assert parse_color("#000000") == (0, 0, 0, 1.0)
+    assert parse_color("rgb(255, 0, 0)") == (255, 0, 0, 1.0)
+    assert parse_color("rgba(0, 0, 0, 0.5)") == (0, 0, 0, 0.5)
+    assert parse_color("white") == (255, 255, 255, 1.0)
+    assert parse_color("hsl(0, 100%, 50%)") is None  # unsupported -> skipped
+
+
+def test_contrast_ratio_black_on_white_is_maximal():
+    assert round(contrast_ratio((0, 0, 0), (255, 255, 255)), 1) == 21.0
+    # Ratio is symmetric regardless of which colour is foreground.
+    assert contrast_ratio((255, 255, 255), (0, 0, 0)) == contrast_ratio(
+        (0, 0, 0), (255, 255, 255)
+    )
+
+
+def test_relative_luminance_bounds():
+    assert relative_luminance((0, 0, 0)) == 0.0
+    assert round(relative_luminance((255, 255, 255)), 4) == 1.0
+
+
+def test_low_contrast_inline_text_flagged_high_contrast_passes(sample):
+    findings = ColorContrastCheck().run(sample)
+    assert len(findings) == 1
+    assert findings[0].criterion == "1.4.3"
+    assert findings[0].severity is Severity.ERROR
+    assert "#888888" in findings[0].message
+    assert "4.5:1 for normal text" in findings[0].message
+
+
+def test_contrast_skips_when_background_indeterminate():
+    # Foreground only, no resolvable background -> cannot assess -> skipped.
+    findings = ColorContrastCheck().run(_soup('<p style="color:#777">Text</p>'))
+    assert findings == []
+
+
+def test_contrast_large_text_uses_relaxed_threshold():
+    # #808080 on white is ~3.95:1 — fails normal text (4.5) but passes large (3.0).
+    style = "color:#808080; background-color:#ffffff"
+    assert ColorContrastCheck().run(_soup(f'<p style="{style}">Body</p>')) != []
+    large = f'<p style="{style}; font-size:24px">Heading</p>'
+    assert ColorContrastCheck().run(_soup(large)) == []
+
+
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
-    assert checks_run == 8
+    assert checks_run == 9
     # Every check in the fixture produces at least one finding.
     assert checks_passed == 0
-    assert len(findings) >= 8
+    assert len(findings) >= 9

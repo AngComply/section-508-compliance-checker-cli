@@ -1,4 +1,5 @@
 """Image accessibility checks (WCAG 1.1.1 Non-text Content)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ class ImageAltTextCheck(Check):
     id = "img-alt"
     criterion = "1.1.1"
     criterion_name = "Non-text Content"
-    description = "Images must have an alt attribute (alt=\"\" if decorative)."
+    description = 'Images must have an alt attribute (alt="" if decorative).'
 
     def run(self, soup: "BeautifulSoup") -> list[Finding]:
         findings: list[Finding] = []

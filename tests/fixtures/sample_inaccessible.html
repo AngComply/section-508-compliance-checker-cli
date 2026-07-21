@@ -36,5 +36,9 @@
 
     <!-- Frame with no title (fail) -->
     <iframe src="/widget"></iframe>
+
+    <!-- Low-contrast inline text (fail 1.4.3) + sufficient contrast (pass) -->
+    <p style="color: #777777; background-color: #888888;">Low contrast text</p>
+    <p style="color: #000000; background-color: #ffffff;">High contrast text</p>
   </body>
 </html>

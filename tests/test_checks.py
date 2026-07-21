@@ -23,6 +23,7 @@ from section508checker.checks.forms import FormLabelCheck
 from section508checker.checks.frames import FrameTitleCheck
 from section508checker.checks.headings import HeadingStructureCheck
 from section508checker.checks.images import ImageAltTextCheck
+from section508checker.checks.landmarks import MainLandmarkCheck, SkipLinkCheck
 from section508checker.checks.links import LinkTextCheck
 from section508checker.checks.tables import TableHeaderCheck
 
@@ -181,6 +182,45 @@ def test_contrast_large_text_uses_relaxed_threshold():
     assert ColorContrastCheck().run(_soup(large)) == []
 
 
+def test_missing_main_landmark_is_warning(sample):
+    findings = MainLandmarkCheck().run(sample)
+    assert len(findings) == 1
+    assert findings[0].severity is Severity.WARNING
+
+
+def test_single_main_landmark_passes():
+    assert MainLandmarkCheck().run(_soup("<body><main>Content</main></body>")) == []
+    assert MainLandmarkCheck().run(_soup('<div role="main">Content</div>')) == []
+
+
+def test_multiple_main_landmarks_is_error():
+    findings = MainLandmarkCheck().run(
+        _soup("<body><main>A</main><main>B</main></body>")
+    )
+    assert len(findings) == 1
+    assert findings[0].severity is Severity.ERROR
+    assert "2 main landmarks" in findings[0].message
+
+
+def test_skip_link_missing_with_nav_is_warning(sample):
+    findings = SkipLinkCheck().run(sample)
+    assert len(findings) == 1
+    assert findings[0].criterion == "2.4.1"
+
+
+def test_skip_link_present_passes():
+    markup = (
+        '<body><a href="#main">Skip to main content</a>'
+        '<nav><a href="/a">A</a></nav></body>'
+    )
+    assert SkipLinkCheck().run(_soup(markup)) == []
+
+
+def test_skip_link_not_flagged_without_navigation():
+    # No navigation landmark -> nothing to bypass -> no warning.
+    assert SkipLinkCheck().run(_soup("<body><p>Just text</p></body>")) == []
+
+
 def test_required_ratio_thresholds():
     assert required_ratio(None, bold=False) == 4.5  # unknown -> stricter
     assert required_ratio(16.0, bold=False) == 4.5  # normal text
@@ -246,7 +286,7 @@ def test_run_all_deduplicates_identical_findings():
 
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
-    assert checks_run == 9
+    assert checks_run == 11
     # Every check in the fixture produces at least one finding.
     assert checks_passed == 0
-    assert len(findings) >= 9
+    assert len(findings) >= 11

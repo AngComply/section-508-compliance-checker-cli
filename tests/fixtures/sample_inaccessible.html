@@ -6,6 +6,10 @@
     <title>Home</title>
   </head>
   <body>
+    <!-- Two top-level banners (error 1.3.1): a page may have at most one -->
+    <header>Site header one</header>
+    <header>Site header two</header>
+
     <!-- Navigation with no skip link (warn 2.4.1); page also has no <main> (warn 1.3.1) -->
     <nav>
       <a href="/home">Home</a>
@@ -46,5 +50,9 @@
     <!-- Low-contrast inline text (fail 1.4.3) + sufficient contrast (pass) -->
     <p style="color: #777777; background-color: #888888;">Low contrast text</p>
     <p style="color: #000000; background-color: #ffffff;">High contrast text</p>
+
+    <!-- Two top-level contentinfo landmarks (error 1.3.1): only one allowed -->
+    <footer>Footer one</footer>
+    <footer>Footer two</footer>
   </body>
 </html>

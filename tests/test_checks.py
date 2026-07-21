@@ -23,7 +23,11 @@ from section508checker.checks.forms import FormLabelCheck
 from section508checker.checks.frames import FrameTitleCheck
 from section508checker.checks.headings import HeadingStructureCheck
 from section508checker.checks.images import ImageAltTextCheck
-from section508checker.checks.landmarks import MainLandmarkCheck, SkipLinkCheck
+from section508checker.checks.landmarks import (
+    LandmarkUniquenessCheck,
+    MainLandmarkCheck,
+    SkipLinkCheck,
+)
 from section508checker.checks.links import LinkTextCheck
 from section508checker.checks.tables import TableHeaderCheck
 
@@ -221,6 +225,31 @@ def test_skip_link_not_flagged_without_navigation():
     assert SkipLinkCheck().run(_soup("<body><p>Just text</p></body>")) == []
 
 
+def test_single_banner_and_contentinfo_pass():
+    markup = "<body><header>Top</header><main>x</main><footer>Bottom</footer></body>"
+    assert LandmarkUniquenessCheck().run(_soup(markup)) == []
+
+
+def test_duplicate_banner_and_contentinfo_flagged(sample):
+    findings = LandmarkUniquenessCheck().run(sample)
+    # Fixture has two <header> and two <footer> at top level.
+    assert len(findings) == 2
+    assert all(f.severity is Severity.ERROR for f in findings)
+    messages = " ".join(f.message for f in findings)
+    assert "banner landmarks" in messages
+    assert "contentinfo landmarks" in messages
+
+
+def test_nested_header_footer_are_not_landmarks():
+    # <header>/<footer> inside sectioning content are not banner/contentinfo.
+    markup = (
+        "<body><header>Site</header>"
+        "<article><header>Article head</header><footer>Article foot</footer></article>"
+        "<footer>Site foot</footer></body>"
+    )
+    assert LandmarkUniquenessCheck().run(_soup(markup)) == []
+
+
 def test_required_ratio_thresholds():
     assert required_ratio(None, bold=False) == 4.5  # unknown -> stricter
     assert required_ratio(16.0, bold=False) == 4.5  # normal text
@@ -286,7 +315,7 @@ def test_run_all_deduplicates_identical_findings():
 
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
-    assert checks_run == 11
+    assert checks_run == 12
     # Every check in the fixture produces at least one finding.
     assert checks_passed == 0
-    assert len(findings) >= 11
+    assert len(findings) >= 12

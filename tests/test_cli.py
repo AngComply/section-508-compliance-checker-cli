@@ -31,7 +31,7 @@ def test_json_output_is_valid_and_structured(capsys):
     assert exit_code == EXIT_FINDINGS
     payload = json.loads(out)
     assert payload["target"] == FIXTURE
-    assert payload["summary"]["checks_run"] == 9
+    assert payload["summary"]["checks_run"] == 11
     assert payload["summary"]["errors"] >= 1
     assert isinstance(payload["findings"], list)
     assert payload["findings"][0]["severity"] == "error"  # sorted, errors first
@@ -61,7 +61,7 @@ def test_clean_document_passes_all_checks(capsys):
     clean = (
         '<!DOCTYPE html><html lang="en"><head>'
         "<title>Quarterly Accessibility Audit Results</title></head>"
-        "<body><h1>Results</h1><p>All clear.</p></body></html>"
+        "<body><main><h1>Results</h1><p>All clear.</p></main></body></html>"
     )
     # Write to a temp file via stdin-like path is not supported, so exercise
     # through a file the loader can read.

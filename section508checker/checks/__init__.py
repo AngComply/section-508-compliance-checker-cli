@@ -36,8 +36,14 @@ CHECKS: list[type[Check]] = [
 ]
 
 
-def run_all(soup: "BeautifulSoup") -> tuple[list[Finding], int, int]:
+def run_all(
+    soup: "BeautifulSoup",
+    computed_styles: list[dict] | None = None,
+) -> tuple[list[Finding], int, int]:
     """Run every registered check against ``soup``.
+
+    When ``computed_styles`` is provided (from the Selenium backend), the
+    colour-contrast check evaluates the full page rather than inline styles only.
 
     Returns a tuple of ``(findings, checks_run, checks_passed)`` where a check
     "passes" when it produces no findings.
@@ -45,11 +51,18 @@ def run_all(soup: "BeautifulSoup") -> tuple[list[Finding], int, int]:
     findings: list[Finding] = []
     passed = 0
     for check_cls in CHECKS:
-        result = check_cls().run(soup)
+        check = check_cls()
+        # The contrast check can use browser-computed styles when available.
+        if isinstance(check, ColorContrastCheck):
+            check.computed_styles = computed_styles
+        result = check.run(soup)
         if result:
             findings.extend(result)
         else:
             passed += 1
+    # Collapse byte-identical findings (e.g. a repeated component fails the same
+    # way in several places); identical entries carry no extra information.
+    findings = list(dict.fromkeys(findings))
     return findings, len(CHECKS), passed
 
 

@@ -14,7 +14,7 @@ from section508checker.checks.color import (
     parse_color,
     relative_luminance,
 )
-from section508checker.checks.contrast import ColorContrastCheck
+from section508checker.checks.contrast import ColorContrastCheck, required_ratio
 from section508checker.checks.document import (
     DocumentLanguageCheck,
     PageTitleCheck,
@@ -179,6 +179,69 @@ def test_contrast_large_text_uses_relaxed_threshold():
     assert ColorContrastCheck().run(_soup(f'<p style="{style}">Body</p>')) != []
     large = f'<p style="{style}; font-size:24px">Heading</p>'
     assert ColorContrastCheck().run(_soup(large)) == []
+
+
+def test_required_ratio_thresholds():
+    assert required_ratio(None, bold=False) == 4.5  # unknown -> stricter
+    assert required_ratio(16.0, bold=False) == 4.5  # normal text
+    assert required_ratio(24.0, bold=False) == 3.0  # >= 24px is large
+    assert required_ratio(19.0, bold=True) == 3.0  # >= 18.66px bold is large
+    assert required_ratio(19.0, bold=False) == 4.5  # not bold -> still normal
+
+
+def _computed(color, background, size=16, weight=400, snippet="<p>x</p>"):
+    return {
+        "color": color,
+        "background": background,
+        "fontSize": size,
+        "fontWeight": weight,
+        "snippet": snippet,
+    }
+
+
+def test_computed_mode_flags_low_contrast_and_passes_high():
+    check = ColorContrastCheck()
+    check.computed_styles = [
+        _computed("rgb(119, 119, 119)", "rgb(136, 136, 136)"),  # ~1.26:1 fail
+        _computed("rgb(0, 0, 0)", "rgb(255, 255, 255)"),  # 21:1 pass
+    ]
+    findings = check.run(None)  # soup is unused in computed mode
+    assert len(findings) == 1
+    assert findings[0].criterion == "1.4.3"
+
+
+def test_computed_mode_large_text_uses_relaxed_threshold():
+    check = ColorContrastCheck()
+    # ~3.95:1 fails normal but passes large text.
+    check.computed_styles = [
+        _computed("rgb(128, 128, 128)", "rgb(255, 255, 255)", size=24)
+    ]
+    assert check.run(None) == []
+
+
+def test_computed_mode_composites_translucent_foreground():
+    check = ColorContrastCheck()
+    # Fully transparent text over white composites to white -> ratio 1:1 -> fail.
+    check.computed_styles = [_computed("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)")]
+    findings = check.run(None)
+    assert len(findings) == 1
+
+
+def test_run_all_threads_computed_styles_to_contrast():
+    # A clean page (no inline issues) but a failing computed record.
+    clean = _soup('<html lang="en"><head><title>Clean Page</title></head></html>')
+    records = [_computed("rgb(119, 119, 119)", "rgb(136, 136, 136)")]
+    findings, _, _ = run_all(clean, computed_styles=records)
+    assert any(f.criterion == "1.4.3" for f in findings)
+
+
+def test_run_all_deduplicates_identical_findings():
+    # The same component failing identically several times collapses to one.
+    clean = _soup('<html lang="en"><head><title>Clean Page</title></head></html>')
+    dup = _computed("rgb(120, 120, 120)", "rgb(255, 255, 255)", snippet="<p>Same</p>")
+    findings, _, _ = run_all(clean, computed_styles=[dup, dup, dup])
+    contrast = [f for f in findings if f.criterion == "1.4.3"]
+    assert len(contrast) == 1
 
 
 def test_run_all_aggregates_counts(sample):

@@ -42,8 +42,9 @@ finding produces a structured, human-readable report an analyst can act on.
   - Links with no discernible text (WCAG 2.4.4)
   - Tables missing header associations (WCAG 1.3.1)
   - `iframe` elements without a `title` (WCAG 4.1.2)
-  - Insufficient text/background color contrast (WCAG 1.4.3) — evaluated for
-    inline-styled elements; see the note under [Roadmap](#roadmap)
+  - Insufficient text/background color contrast (WCAG 1.4.3) — full-page under
+    `--render selenium`, inline styles otherwise; see the note under
+    [Roadmap](#roadmap)
 - **Two rendering backends:**
   - **BeautifulSoup** for fast static-HTML parsing
   - **Selenium** for JavaScript-rendered pages and dynamic content
@@ -160,20 +161,29 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
 - [x] JSON and Markdown reporters
 - [x] Unit tests and sample fixtures
 - [x] CI workflow (GitHub Actions: ruff lint + pytest matrix)
-- [x] Color-contrast analysis (WCAG 1.4.3) for inline-styled elements
-- [ ] Full-page color contrast via computed styles (Selenium `getComputedStyle`)
+- [x] Color-contrast analysis (WCAG 1.4.3) — full-page (Selenium computed
+      styles) and inline (static)
 - [ ] Non-text contrast (WCAG 1.4.11) and ARIA landmark / region checks
+- [ ] Pixel-sampling for backgrounds painted by overlays, `::before`
+      pseudo-elements, or images that lie outside the text's ancestor chain
+      (current contrast checks skip these rather than guess)
 
 Nine checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 2.4.2, 2.4.4,
 3.1.1, and 4.1.2. See the source in
 [`section508checker/checks/`](section508checker/checks/).
 
-> **Color-contrast scope:** Static HTML only exposes colors set via inline
-> `style` attributes, so the contrast check assesses an element only when both
-> its foreground and an opaque background are determinable inline. Colors from
-> external/embedded CSS or inheritance are skipped rather than guessed (no false
-> positives); full-page evaluation is planned via the Selenium backend's
-> computed styles.
+> **Color-contrast scope:** With `--render selenium`, the check reads each text
+> element's real rendered color and background via `getComputedStyle`, so it
+> evaluates the full page regardless of where the styles come from (inline,
+> embedded, external, or inherited). Semi-transparent background layers are
+> composited down to the first opaque color. When the effective background can't
+> be resolved to a single color — e.g. text over a CSS gradient or background
+> image — the element is skipped rather than compared against a guessed color,
+> so the check avoids false positives at the cost of coverage on those elements.
+> Without a browser (static / file input), only inline `style` attributes are
+> visible, so an element is assessed only when both its foreground and an opaque
+> background are determinable inline. For the most complete results, run with
+> `--render selenium`.
 
 ## Portfolio context
 

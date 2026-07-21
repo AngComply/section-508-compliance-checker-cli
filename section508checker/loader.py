@@ -6,6 +6,10 @@ Three sources are supported:
   * a live URL rendered in a headless browser (``selenium``) for pages whose
     content is produced by JavaScript.
 
+The Selenium backend additionally captures *computed* text styles from the live
+DOM (via ``getComputedStyle``), which enables full-page colour-contrast
+evaluation that inline-only static parsing cannot provide.
+
 Third-party backends are imported lazily so that file/static usage does not
 require Selenium to be installed, and vice versa. Every failure mode is raised
 as :class:`LoaderError` with an actionable message.
@@ -13,6 +17,7 @@ as :class:`LoaderError` with an actionable message.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_TIMEOUT = 30
@@ -23,23 +28,115 @@ class LoaderError(Exception):
     """Raised when HTML cannot be acquired from the requested source."""
 
 
+@dataclass
+class LoadedPage:
+    """The result of loading a page.
+
+    Attributes:
+        html: The page's HTML source.
+        computed_styles: One record per text-bearing element with its
+            browser-computed colours and font metrics, or ``None`` when the
+            source cannot provide computed styles (file/static backends).
+    """
+
+    html: str
+    computed_styles: list[dict] | None = None
+
+
+# JavaScript executed in the live page to collect computed text styles. For each
+# element that directly contains visible text, it records the computed colour,
+# the nearest non-transparent ancestor background, and font metrics.
+#
+# effectiveBackground resolves the nearest opaque ancestor background colour, or
+# returns null (indeterminate -> skip) when it cannot. It returns null if any
+# ancestor paints a gradient/image background (backgroundImage != 'none'), or if
+# no ancestor sets an explicit opaque background at all. Both are deliberate: the
+# effective colour behind such text cannot be resolved from a single ancestor
+# value (e.g. Tailwind gradient heroes, or dark cards whose colour comes from an
+# absolutely-positioned overlay or ::before pseudo-element that is not in the
+# text's ancestor chain). Guessing a default would produce false positives such
+# as white-on-white, so the element is skipped and left for manual review.
+_COMPUTED_STYLES_JS = r"""
+function parseRgb(value) {
+  const m = value && value.match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const p = m[1].split(',').map(function (s) { return parseFloat(s); });
+  return { r: p[0], g: p[1], b: p[2], a: p.length === 4 ? p[3] : 1 };
+}
+function effectiveBackground(el) {
+  // Collect background-colour layers from the text element upward (front to
+  // back) until an opaque one is reached, then composite them. Returns null
+  // (indeterminate) if a gradient/image is encountered first, or if no opaque
+  // base exists -- both cases cannot be resolved to a single colour.
+  const layers = [];
+  let node = el;
+  while (node) {
+    const cs = getComputedStyle(node);
+    if (cs.backgroundImage && cs.backgroundImage !== 'none') {
+      return null;  // gradient/image behind text: cannot resolve a solid colour
+    }
+    const c = parseRgb(cs.backgroundColor);
+    if (c && c.a > 0) {
+      layers.push(c);
+      if (c.a >= 1) {  // opaque base reached: composite the stack over it
+        let r = c.r, g = c.g, b = c.b;
+        for (let i = layers.length - 2; i >= 0; i--) {
+          const l = layers[i];
+          r = Math.round(l.r * l.a + r * (1 - l.a));
+          g = Math.round(l.g * l.a + g * (1 - l.a));
+          b = Math.round(l.b * l.a + b * (1 - l.a));
+        }
+        return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+      }
+    }
+    node = node.parentElement;
+  }
+  return null;  // no opaque ancestor background: indeterminate, do not guess
+}
+const results = [];
+const elements = document.body ? document.body.querySelectorAll('*') : [];
+for (const el of elements) {
+  let hasText = false;
+  for (const child of el.childNodes) {
+    if (child.nodeType === 3 && child.textContent.trim().length > 0) {
+      hasText = true;
+      break;
+    }
+  }
+  if (!hasText) continue;
+  const cs = getComputedStyle(el);
+  if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+  const background = effectiveBackground(el);
+  if (background === null) continue;  // indeterminate background: skip
+  results.push({
+    color: cs.color,
+    background: background,
+    fontSize: parseFloat(cs.fontSize),
+    fontWeight: parseInt(cs.fontWeight, 10) || 400,
+    snippet: (el.outerHTML || '').slice(0, 200),
+  });
+}
+return results;
+"""
+
+
 def load_html(
     *,
     url: str | None = None,
     file: str | None = None,
     render: str = "static",
     timeout: int = DEFAULT_TIMEOUT,
-) -> str:
-    """Return the HTML for the requested source.
+) -> LoadedPage:
+    """Return the loaded page for the requested source.
 
     Exactly one of ``url`` or ``file`` must be provided.
     """
     if file:
-        return _load_file(file)
+        return LoadedPage(html=_load_file(file))
     if url:
         if render == "selenium":
             return _load_selenium(url, timeout)
-        return _load_static(url, timeout)
+        return LoadedPage(html=_load_static(url, timeout))
     raise LoaderError("No input source provided; supply a URL or a file path.")
 
 
@@ -92,7 +189,7 @@ def _load_static(url: str, timeout: int) -> str:
     return response.text
 
 
-def _load_selenium(url: str, timeout: int) -> str:
+def _load_selenium(url: str, timeout: int) -> LoadedPage:
     try:
         from selenium import webdriver
         from selenium.common.exceptions import WebDriverException
@@ -114,7 +211,9 @@ def _load_selenium(url: str, timeout: int) -> str:
         driver = webdriver.Chrome(options=options)
         driver.set_page_load_timeout(timeout)
         driver.get(url)
-        return driver.page_source
+        html = driver.page_source
+        computed_styles = driver.execute_script(_COMPUTED_STYLES_JS)
+        return LoadedPage(html=html, computed_styles=computed_styles)
     except WebDriverException as exc:
         raise LoaderError(
             "Selenium could not render the page. Ensure Chrome/Chromium is "

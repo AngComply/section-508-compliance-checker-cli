@@ -164,6 +164,9 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
 - [x] Color-contrast analysis (WCAG 1.4.3) — full-page (Selenium computed
       styles) and inline (static)
 - [ ] Non-text contrast (WCAG 1.4.11) and ARIA landmark / region checks
+- [ ] Pixel-sampling for backgrounds painted by overlays, `::before`
+      pseudo-elements, or images that lie outside the text's ancestor chain
+      (current contrast checks skip these rather than guess)
 
 Nine checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 2.4.2, 2.4.4,
 3.1.1, and 4.1.2. See the source in

@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ERROR
 
     try:
-        html = load_html(
+        page = load_html(
             url=args.url,
             file=args.file,
             render=args.render,
@@ -110,8 +110,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
-    soup = BeautifulSoup(html, "html.parser")
-    findings, checks_run, checks_passed = run_all(soup)
+    soup = BeautifulSoup(page.html, "html.parser")
+    findings, checks_run, checks_passed = run_all(
+        soup, computed_styles=page.computed_styles
+    )
     report = Report(
         target=args.url or args.file,
         findings=findings,

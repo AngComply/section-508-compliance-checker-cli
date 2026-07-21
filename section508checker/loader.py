@@ -46,20 +46,52 @@ class LoadedPage:
 # JavaScript executed in the live page to collect computed text styles. For each
 # element that directly contains visible text, it records the computed colour,
 # the nearest non-transparent ancestor background, and font metrics.
+#
+# effectiveBackground resolves the nearest opaque ancestor background colour, or
+# returns null (indeterminate -> skip) when it cannot. It returns null if any
+# ancestor paints a gradient/image background (backgroundImage != 'none'), or if
+# no ancestor sets an explicit opaque background at all. Both are deliberate: the
+# effective colour behind such text cannot be resolved from a single ancestor
+# value (e.g. Tailwind gradient heroes, or dark cards whose colour comes from an
+# absolutely-positioned overlay or ::before pseudo-element that is not in the
+# text's ancestor chain). Guessing a default would produce false positives such
+# as white-on-white, so the element is skipped and left for manual review.
 _COMPUTED_STYLES_JS = r"""
+function parseRgb(value) {
+  const m = value && value.match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const p = m[1].split(',').map(function (s) { return parseFloat(s); });
+  return { r: p[0], g: p[1], b: p[2], a: p.length === 4 ? p[3] : 1 };
+}
 function effectiveBackground(el) {
+  // Collect background-colour layers from the text element upward (front to
+  // back) until an opaque one is reached, then composite them. Returns null
+  // (indeterminate) if a gradient/image is encountered first, or if no opaque
+  // base exists -- both cases cannot be resolved to a single colour.
+  const layers = [];
   let node = el;
   while (node) {
-    const bg = getComputedStyle(node).backgroundColor;
-    const m = bg && bg.match(/rgba?\(([^)]+)\)/);
-    if (m) {
-      const parts = m[1].split(',').map(function (s) { return parseFloat(s); });
-      const alpha = parts.length === 4 ? parts[3] : 1;
-      if (alpha > 0) return bg;
+    const cs = getComputedStyle(node);
+    if (cs.backgroundImage && cs.backgroundImage !== 'none') {
+      return null;  // gradient/image behind text: cannot resolve a solid colour
+    }
+    const c = parseRgb(cs.backgroundColor);
+    if (c && c.a > 0) {
+      layers.push(c);
+      if (c.a >= 1) {  // opaque base reached: composite the stack over it
+        let r = c.r, g = c.g, b = c.b;
+        for (let i = layers.length - 2; i >= 0; i--) {
+          const l = layers[i];
+          r = Math.round(l.r * l.a + r * (1 - l.a));
+          g = Math.round(l.g * l.a + g * (1 - l.a));
+          b = Math.round(l.b * l.a + b * (1 - l.a));
+        }
+        return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+      }
     }
     node = node.parentElement;
   }
-  return 'rgb(255, 255, 255)';
+  return null;  // no opaque ancestor background: indeterminate, do not guess
 }
 const results = [];
 const elements = document.body ? document.body.querySelectorAll('*') : [];
@@ -74,9 +106,11 @@ for (const el of elements) {
   if (!hasText) continue;
   const cs = getComputedStyle(el);
   if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+  const background = effectiveBackground(el);
+  if (background === null) continue;  // indeterminate background: skip
   results.push({
     color: cs.color,
-    background: effectiveBackground(el),
+    background: background,
     fontSize: parseFloat(cs.fontSize),
     fontWeight: parseInt(cs.fontWeight, 10) || 400,
     snippet: (el.outerHTML || '').slice(0, 200),

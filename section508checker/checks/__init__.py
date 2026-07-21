@@ -60,6 +60,9 @@ def run_all(
             findings.extend(result)
         else:
             passed += 1
+    # Collapse byte-identical findings (e.g. a repeated component fails the same
+    # way in several places); identical entries carry no extra information.
+    findings = list(dict.fromkeys(findings))
     return findings, len(CHECKS), passed
 
 

@@ -235,6 +235,15 @@ def test_run_all_threads_computed_styles_to_contrast():
     assert any(f.criterion == "1.4.3" for f in findings)
 
 
+def test_run_all_deduplicates_identical_findings():
+    # The same component failing identically several times collapses to one.
+    clean = _soup('<html lang="en"><head><title>Clean Page</title></head></html>')
+    dup = _computed("rgb(120, 120, 120)", "rgb(255, 255, 255)", snippet="<p>Same</p>")
+    findings, _, _ = run_all(clean, computed_styles=[dup, dup, dup])
+    contrast = [f for f in findings if f.criterion == "1.4.3"]
+    assert len(contrast) == 1
+
+
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
     assert checks_run == 9

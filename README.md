@@ -172,11 +172,15 @@ Nine checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 2.4.2, 2.4.4,
 > **Color-contrast scope:** With `--render selenium`, the check reads each text
 > element's real rendered color and background via `getComputedStyle`, so it
 > evaluates the full page regardless of where the styles come from (inline,
-> embedded, external, or inherited). Without a browser (static / file input), it
-> can only see inline `style` attributes, so it assesses an element only when
-> both its foreground and an opaque background are determinable inline and skips
-> indeterminate cases rather than guessing (no false positives). For the most
-> complete contrast results, run with `--render selenium`.
+> embedded, external, or inherited). Semi-transparent background layers are
+> composited down to the first opaque color. When the effective background can't
+> be resolved to a single color — e.g. text over a CSS gradient or background
+> image — the element is skipped rather than compared against a guessed color,
+> so the check avoids false positives at the cost of coverage on those elements.
+> Without a browser (static / file input), only inline `style` attributes are
+> visible, so an element is assessed only when both its foreground and an opaque
+> background are determinable inline. For the most complete results, run with
+> `--render selenium`.
 
 ## Portfolio context
 

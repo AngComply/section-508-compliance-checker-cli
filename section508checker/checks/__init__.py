@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .base import Check, Finding, Severity
+from .contrast import ColorContrastCheck
 from .document import DocumentLanguageCheck, PageTitleCheck
 from .forms import FormLabelCheck
 from .frames import FrameTitleCheck
@@ -31,6 +32,7 @@ CHECKS: list[type[Check]] = [
     LinkTextCheck,
     TableHeaderCheck,
     FrameTitleCheck,
+    ColorContrastCheck,
 ]
 
 

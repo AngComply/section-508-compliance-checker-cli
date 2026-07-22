@@ -1,8 +1,10 @@
 # Section 508 Compliance Checker CLI
 
-> A command-line tool for automated detection of common Section 508 / WCAG accessibility barriers in web content.
+> A command-line tool for automated detection of common Section 508 / WCAG accessibility barriers in web content — 14 checks across static HTML and JavaScript-rendered pages, with console, JSON, and Markdown reports.
 
+[![CI](https://github.com/AngComply/section-508-compliance-checker-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/AngComply/section-508-compliance-checker-cli/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Standard: Section 508](https://img.shields.io/badge/standard-Section%20508-brightgreen.svg)](https://www.section508.gov/)
 [![WCAG 2.1 AA](https://img.shields.io/badge/WCAG-2.1%20AA-brightgreen.svg)](https://www.w3.org/TR/WCAG21/)
 

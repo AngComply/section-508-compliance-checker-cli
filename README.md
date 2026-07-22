@@ -70,6 +70,7 @@ finding produces a structured, human-readable report an analyst can act on.
 | **Python 3.10+** | Core language |
 | **Selenium** | Browser automation for JS-rendered pages |
 | **BeautifulSoup** | HTML parsing for static content |
+| **Pillow** | Pixel-sampling page screenshots to resolve backgrounds |
 | **argparse** | Command-line interface |
 
 ## Installation
@@ -174,11 +175,11 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
 - [x] Landmark checks — main, banner/contentinfo uniqueness, navigation
       naming, skip link (WCAG 1.3.1 / 2.4.1)
 - [x] Non-text contrast for form fields (WCAG 1.4.11)
+- [x] Pixel-sampling of the rendered screenshot to resolve backgrounds painted
+      by gradients, images, `::before` pseudo-elements, or overlays outside the
+      text's ancestor chain (Selenium)
 - [ ] Non-text contrast for icons, graphics, and focus indicators (broader
       WCAG 1.4.11)
-- [ ] Pixel-sampling for backgrounds painted by overlays, `::before`
-      pseudo-elements, or images that lie outside the text's ancestor chain
-      (current contrast checks skip these rather than guess)
 
 Fourteen checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 1.4.11, 2.4.1,
 2.4.2, 2.4.4, 3.1.1, and 4.1.2. See the source in
@@ -188,14 +189,16 @@ Fourteen checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 1.4.11, 2.4.1,
 > element's real rendered color and background via `getComputedStyle`, so it
 > evaluates the full page regardless of where the styles come from (inline,
 > embedded, external, or inherited). Semi-transparent background layers are
-> composited down to the first opaque color. When the effective background can't
-> be resolved to a single color — e.g. text over a CSS gradient or background
-> image — the element is skipped rather than compared against a guessed color,
-> so the check avoids false positives at the cost of coverage on those elements.
-> Without a browser (static / file input), only inline `style` attributes are
-> visible, so an element is assessed only when both its foreground and an opaque
-> background are determinable inline. For the most complete results, run with
-> `--render selenium`.
+> composited down to the first opaque color. When the background can't be
+> resolved from the DOM — e.g. text over a CSS gradient, background image,
+> `::before` pseudo-element, or an overlay outside the ancestor chain — the tool
+> samples the **actual rendered pixels** from a page screenshot to recover the
+> real background color. That measures what's painted rather than guessing, so it
+> stays free of false positives; elements that still can't be resolved are
+> skipped. Without a browser (static / file input), only inline `style`
+> attributes are visible, so an element is assessed only when both its foreground
+> and an opaque background are determinable inline. For the most complete
+> results, run with `--render selenium`.
 
 ## Portfolio context
 

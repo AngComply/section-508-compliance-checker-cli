@@ -53,14 +53,12 @@ class LoadedPage:
 # the nearest non-transparent ancestor background, and font metrics.
 #
 # effectiveBackground resolves the nearest opaque ancestor background colour, or
-# returns null (indeterminate -> skip) when it cannot. It returns null if any
-# ancestor paints a gradient/image background (backgroundImage != 'none'), or if
-# no ancestor sets an explicit opaque background at all. Both are deliberate: the
-# effective colour behind such text cannot be resolved from a single ancestor
-# value (e.g. Tailwind gradient heroes, or dark cards whose colour comes from an
-# absolutely-positioned overlay or ::before pseudo-element that is not in the
-# text's ancestor chain). Guessing a default would produce false positives such
-# as white-on-white, so the element is skipped and left for manual review.
+# returns null when it cannot: if any ancestor paints a gradient/image background
+# (backgroundImage != 'none'), or if no ancestor sets an explicit opaque
+# background at all (e.g. Tailwind gradient heroes, or dark cards whose colour
+# comes from an absolutely-positioned overlay or ::before pseudo-element that is
+# not in the text's ancestor chain). Rather than guess, the loader resolves those
+# null cases by sampling the actual rendered pixels from a page screenshot.
 _COMPUTED_STYLES_JS = r"""
 function parseRgb(value) {
   const m = value && value.match(/rgba?\(([^)]+)\)/);
@@ -111,14 +109,17 @@ for (const el of elements) {
   if (!hasText) continue;
   const cs = getComputedStyle(el);
   if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+  // background may be null (indeterminate): the loader then resolves it by
+  // sampling the actual rendered pixels from a screenshot, using the rect.
   const background = effectiveBackground(el);
-  if (background === null) continue;  // indeterminate background: skip
+  const rect = el.getBoundingClientRect();
   results.push({
     color: cs.color,
     background: background,
     fontSize: parseFloat(cs.fontSize),
     fontWeight: parseInt(cs.fontWeight, 10) || 400,
     snippet: (el.outerHTML || '').slice(0, 200),
+    rect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
   });
 }
 // Editable text fields, for non-text contrast (WCAG 1.4.11).
@@ -144,7 +145,11 @@ for (const el of controls) {
     snippet: (el.outerHTML || '').slice(0, 200),
   });
 }
-return { text: results, components: components };
+return {
+  text: results,
+  components: components,
+  devicePixelRatio: window.devicePixelRatio || 1,
+};
 """
 
 
@@ -217,6 +222,27 @@ def _load_static(url: str, timeout: int) -> str:
     return response.text
 
 
+def _resolve_backgrounds_from_pixels(
+    records: list[dict], screenshot: bytes, device_pixel_ratio: float
+) -> None:
+    """Fill in ``background`` for records the DOM could not resolve.
+
+    Mutates ``records`` in place: for each text record whose ``background`` is
+    None, sample the screenshot at its rect to recover the real painted colour.
+    Records that remain unresolved keep ``background = None`` and are skipped by
+    the contrast check (never guessed).
+    """
+    from .pixels import dominant_background
+
+    for record in records:
+        if record.get("background") is not None:
+            continue
+        rect = record.get("rect")
+        if not rect:
+            continue
+        record["background"] = dominant_background(screenshot, rect, device_pixel_ratio)
+
+
 def _load_selenium(url: str, timeout: int) -> LoadedPage:
     try:
         from selenium import webdriver
@@ -240,10 +266,31 @@ def _load_selenium(url: str, timeout: int) -> LoadedPage:
         driver.set_page_load_timeout(timeout)
         driver.get(url)
         html = driver.page_source
+
+        # Grow the viewport to the full document height and scroll to the top so
+        # a single screenshot captures the whole page for pixel sampling.
+        page_height = driver.execute_script(
+            "return Math.max(document.body.scrollHeight, "
+            "document.documentElement.scrollHeight);"
+        )
+        width = driver.execute_script("return document.documentElement.clientWidth;")
+        driver.set_window_size(width or 1280, min(int(page_height or 0) + 100, 16000))
+        driver.execute_script("window.scrollTo(0, 0);")
+
         extracted = driver.execute_script(_COMPUTED_STYLES_JS)
+        text_records = extracted.get("text", [])
+        try:
+            screenshot = driver.get_screenshot_as_png()
+        except WebDriverException:  # pragma: no cover - screenshot unsupported
+            screenshot = None
+        if screenshot is not None:
+            _resolve_backgrounds_from_pixels(
+                text_records, screenshot, extracted.get("devicePixelRatio", 1)
+            )
+
         return LoadedPage(
             html=html,
-            computed_styles=extracted.get("text", []),
+            computed_styles=text_records,
             component_styles=extracted.get("components", []),
         )
     except WebDriverException as exc:

@@ -29,17 +29,21 @@ pytestmark = pytest.mark.skipif(
     reason="headless Chrome/Chromium not available",
 )
 
-# White text inside a 10%-white card over a dark gradient (should NOT be flagged
-# — the effective background is dark), plus a solid low-contrast paragraph that
-# SHOULD be flagged.
+# Three text elements whose backgrounds come from CSS gradients — which the DOM
+# cannot resolve to a single colour, so they exercise the pixel-sampling path:
+#   1. white on a DARK gradient  -> real background is dark -> passes
+#   2. grey on a LIGHT gradient  -> genuinely low contrast  -> flagged
+#      (this case was previously skipped; only pixel sampling detects it)
+# plus a solid low-contrast paragraph the DOM resolves directly -> flagged.
 _PAGE = """<!DOCTYPE html>
 <html lang="en">
-  <head><title>Contrast Layering Fixture</title></head>
+  <head><title>Contrast Pixel-Sampling Fixture</title></head>
   <body style="background:#ffffff">
     <div style="background-image:linear-gradient(#0a1a2a,#0a1a2a); padding:24px">
-      <div style="background-color:rgba(255,255,255,0.1); padding:24px">
-        <p style="color:#ffffff; font-size:16px">White text on dark gradient</p>
-      </div>
+      <p style="color:#ffffff; font-size:16px">White text on dark gradient</p>
+    </div>
+    <div style="background-image:linear-gradient(#f0f0f0,#f0f0f0); padding:24px">
+      <p style="color:#c8c8c8; font-size:16px">Low contrast over gradient</p>
     </div>
     <p style="color:#888;background:#fff;font-size:16px">Solid low contrast</p>
   </body>
@@ -61,7 +65,12 @@ def test_solid_low_contrast_is_flagged(tmp_path):
     assert "Solid low contrast" in _contrast_snippets(tmp_path)
 
 
-def test_translucent_over_gradient_is_skipped(tmp_path):
-    # The white text is readable on the dark gradient; the compositing logic must
-    # resolve the effective background as indeterminate/dark and NOT flag it.
+def test_white_on_dark_gradient_passes_via_pixels(tmp_path):
+    # Pixel sampling reads the real dark background, so the white text passes.
     assert "White text on dark gradient" not in _contrast_snippets(tmp_path)
+
+
+def test_low_contrast_over_gradient_flagged_via_pixels(tmp_path):
+    # The DOM cannot resolve a gradient background; pixel sampling recovers the
+    # light colour and correctly flags this genuinely low-contrast text.
+    assert "Low contrast over gradient" in _contrast_snippets(tmp_path)

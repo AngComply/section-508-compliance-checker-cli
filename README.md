@@ -47,8 +47,10 @@ finding produces a structured, human-readable report an analyst can act on.
   - Insufficient text/background color contrast (WCAG 1.4.3) — full-page under
     `--render selenium`, inline styles otherwise; see the note under
     [Roadmap](#roadmap)
-  - Low-contrast form-field boundaries (WCAG 1.4.11 Non-text Contrast) —
-    full-page under `--render selenium`, inline otherwise
+  - Low-contrast form-field boundaries and meaningful graphics/icons
+    (WCAG 1.4.11 Non-text Contrast) — full-page under `--render selenium`
+  - Missing keyboard focus indicator (WCAG 2.4.7) — tested via real keyboard
+    tabbing under `--render selenium`
   - Missing or duplicate main landmark (WCAG 1.3.1)
   - Duplicate banner / contentinfo landmarks (WCAG 1.3.1)
   - Multiple navigation landmarks without accessible names (WCAG 1.3.1)
@@ -174,15 +176,15 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
       styles) and inline (static)
 - [x] Landmark checks — main, banner/contentinfo uniqueness, navigation
       naming, skip link (WCAG 1.3.1 / 2.4.1)
-- [x] Non-text contrast for form fields (WCAG 1.4.11)
+- [x] Non-text contrast for form fields and meaningful graphics/icons,
+      plus keyboard focus visibility (WCAG 1.4.11 / 2.4.7)
 - [x] Pixel-sampling of the rendered screenshot to resolve backgrounds painted
       by gradients, images, `::before` pseudo-elements, or overlays outside the
       text's ancestor chain (Selenium)
-- [ ] Non-text contrast for icons, graphics, and focus indicators (broader
-      WCAG 1.4.11)
+- [ ] PDF, mobile, and ARIA widget-pattern checks (future scope)
 
-Fourteen checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 1.4.11, 2.4.1,
-2.4.2, 2.4.4, 3.1.1, and 4.1.2. See the source in
+Sixteen checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 1.4.11, 2.4.1,
+2.4.2, 2.4.4, 2.4.7, 3.1.1, and 4.1.2. See the source in
 [`section508checker/checks/`](section508checker/checks/).
 
 > **Color-contrast scope:** With `--render selenium`, the check reads each text

@@ -31,7 +31,7 @@ def test_json_output_is_valid_and_structured(capsys):
     assert exit_code == EXIT_FINDINGS
     payload = json.loads(out)
     assert payload["target"] == FIXTURE
-    assert payload["summary"]["checks_run"] == 14
+    assert payload["summary"]["checks_run"] == 16
     assert payload["summary"]["errors"] >= 1
     assert isinstance(payload["findings"], list)
     assert payload["findings"][0]["severity"] == "error"  # sorted, errors first

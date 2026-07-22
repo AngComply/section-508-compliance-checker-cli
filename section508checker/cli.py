@@ -115,6 +115,8 @@ def main(argv: list[str] | None = None) -> int:
         soup,
         computed_styles=page.computed_styles,
         component_styles=page.component_styles,
+        graphic_styles=page.graphic_styles,
+        focus_states=page.focus_states,
     )
     report = Report(
         target=args.url or args.file,

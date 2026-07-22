@@ -41,11 +41,17 @@ class LoadedPage:
             browser-computed border, background, and surrounding background,
             used for non-text contrast (WCAG 1.4.11). ``None`` for non-browser
             backends.
+        graphic_styles: One record per meaningful (non-decorative) SVG graphic
+            with its fill/stroke and background, for non-text contrast (1.4.11).
+        focus_states: One record per keyboard-focusable element with its
+            focus-state styles, for focus visibility (WCAG 2.4.7).
     """
 
     html: str
     computed_styles: list[dict] | None = None
     component_styles: list[dict] | None = None
+    graphic_styles: list[dict] | None = None
+    focus_states: list[dict] | None = None
 
 
 # JavaScript executed in the live page to collect computed text styles. For each
@@ -145,10 +151,60 @@ for (const el of controls) {
     snippet: (el.outerHTML || '').slice(0, 200),
   });
 }
+// Meaningful (non-decorative) SVG graphics, for non-text contrast (1.4.11).
+// A graphic is in scope only if it exposes an accessible name / img role; a
+// decorative icon (aria-hidden / role=presentation / unnamed) is exempt.
+const graphics = [];
+const svgs = document.body ? document.body.querySelectorAll('svg') : [];
+for (const el of svgs) {
+  const role = (el.getAttribute('role') || '').toLowerCase();
+  if (el.getAttribute('aria-hidden') === 'true') continue;
+  if (role === 'presentation' || role === 'none') continue;
+  const named =
+    (el.getAttribute('aria-label') || '').trim() ||
+    el.getAttribute('aria-labelledby') ||
+    role === 'img' ||
+    el.querySelector('title');
+  if (!named) continue;
+  const cs = getComputedStyle(el);
+  if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) continue;
+  graphics.push({
+    fill: cs.fill,
+    stroke: cs.stroke,
+    background: effectiveBackground(el.parentElement || el),
+    snippet: (el.outerHTML || '').slice(0, 160),
+    rect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height },
+  });
+}
 return {
   text: results,
   components: components,
+  graphics: graphics,
   devicePixelRatio: window.devicePixelRatio || 1,
+};
+"""
+
+# Executed after each Tab keypress to read the keyboard-focused element and its
+# focus-state styles (real keyboard focus, so :focus-visible rules apply).
+_FOCUS_PROBE_JS = r"""
+const el = document.activeElement;
+if (!el || el === document.body || el === document.documentElement) {
+  return { done: true };
+}
+if (el.getAttribute('data-a11y-focus-seen')) {
+  return { done: true };  // focus has cycled back to a visited element
+}
+el.setAttribute('data-a11y-focus-seen', '1');
+const cs = getComputedStyle(el);
+return {
+  done: false,
+  outlineStyle: cs.outlineStyle,
+  outlineWidth: cs.outlineWidth,
+  outlineColor: cs.outlineColor,
+  boxShadow: cs.boxShadow,
+  snippet: (el.outerHTML || '').slice(0, 160),
 };
 """
 
@@ -243,6 +299,29 @@ def _resolve_backgrounds_from_pixels(
         record["background"] = dominant_background(screenshot, rect, device_pixel_ratio)
 
 
+def _collect_focus_states(driver, max_tabs: int = 250) -> list[dict]:
+    """Tab through the page and record each focusable element's focus styles.
+
+    Uses real keyboard focus (Tab), so ``:focus-visible`` rules apply — the
+    accurate signal for whether a visible focus indicator is shown. Stops when
+    focus leaves the page or cycles back to an already-visited element.
+    """
+    from selenium.common.exceptions import WebDriverException
+    from selenium.webdriver.common.keys import Keys
+
+    states: list[dict] = []
+    for _ in range(max_tabs):
+        try:
+            driver.switch_to.active_element.send_keys(Keys.TAB)
+            info = driver.execute_script(_FOCUS_PROBE_JS)
+        except WebDriverException:  # pragma: no cover - defensive
+            break
+        if not info or info.get("done"):
+            break
+        states.append(info)
+    return states
+
+
 def _load_selenium(url: str, timeout: int) -> LoadedPage:
     try:
         from selenium import webdriver
@@ -279,19 +358,24 @@ def _load_selenium(url: str, timeout: int) -> LoadedPage:
 
         extracted = driver.execute_script(_COMPUTED_STYLES_JS)
         text_records = extracted.get("text", [])
+        graphic_records = extracted.get("graphics", [])
+        dpr = extracted.get("devicePixelRatio", 1)
         try:
             screenshot = driver.get_screenshot_as_png()
         except WebDriverException:  # pragma: no cover - screenshot unsupported
             screenshot = None
         if screenshot is not None:
-            _resolve_backgrounds_from_pixels(
-                text_records, screenshot, extracted.get("devicePixelRatio", 1)
-            )
+            _resolve_backgrounds_from_pixels(text_records, screenshot, dpr)
+            _resolve_backgrounds_from_pixels(graphic_records, screenshot, dpr)
+
+        focus_states = _collect_focus_states(driver)
 
         return LoadedPage(
             html=html,
             computed_styles=text_records,
             component_styles=extracted.get("components", []),
+            graphic_styles=graphic_records,
+            focus_states=focus_states,
         )
     except WebDriverException as exc:
         raise LoaderError(

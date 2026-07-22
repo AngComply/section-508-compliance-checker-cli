@@ -74,3 +74,63 @@ def test_low_contrast_over_gradient_flagged_via_pixels(tmp_path):
     # The DOM cannot resolve a gradient background; pixel sampling recovers the
     # light colour and correctly flags this genuinely low-contrast text.
     assert "Low contrast over gradient" in _contrast_snippets(tmp_path)
+
+
+# --- Focus visibility (WCAG 2.4.7) via real keyboard tabbing ---------------
+
+_FOCUS_PAGE = """<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" /><title>Focus Fixture</title>
+    <style>
+      .bad:focus { outline: none; }
+      .good:focus-visible { outline: 3px solid #0b5cad; }
+    </style>
+  </head>
+  <body>
+    <button class="good">Good button</button>
+    <button class="bad">Bad button</button>
+  </body>
+</html>
+"""
+
+
+def _focus_snippets(tmp_path):
+    page_file = tmp_path / "focus.html"
+    page_file.write_text(_FOCUS_PAGE, encoding="utf-8")
+    page = load_html(url=page_file.as_uri(), render="selenium")
+    soup = BeautifulSoup(page.html, "html.parser")
+    findings, _, _ = run_all(soup, focus_states=page.focus_states)
+    return " ".join(f.snippet for f in findings if f.criterion == "2.4.7")
+
+
+def test_button_without_focus_indicator_is_flagged(tmp_path):
+    snippets = _focus_snippets(tmp_path)
+    assert "Bad button" in snippets
+    assert "Good button" not in snippets
+
+
+# --- Meaningful graphic contrast (WCAG 1.4.11) -----------------------------
+
+_ICON_PAGE = """<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Icon Fixture</title></head>
+  <body style="background:#ffffff">
+    <svg role="img" aria-label="Low contrast icon" width="24" height="24"
+         style="fill:#dddddd"><rect width="24" height="24"></rect></svg>
+    <svg role="img" aria-label="Sufficient icon" width="24" height="24"
+         style="fill:#222222"><rect width="24" height="24"></rect></svg>
+  </body>
+</html>
+"""
+
+
+def test_low_contrast_named_icon_is_flagged(tmp_path):
+    page_file = tmp_path / "icon.html"
+    page_file.write_text(_ICON_PAGE, encoding="utf-8")
+    page = load_html(url=page_file.as_uri(), render="selenium")
+    soup = BeautifulSoup(page.html, "html.parser")
+    findings, _, _ = run_all(soup, graphic_styles=page.graphic_styles)
+    snippets = " ".join(f.snippet for f in findings if f.criterion == "1.4.11")
+    assert "Low contrast icon" in snippets
+    assert "Sufficient icon" not in snippets

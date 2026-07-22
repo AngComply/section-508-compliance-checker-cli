@@ -25,6 +25,27 @@ def _is_nav(element: "Tag") -> bool:
     return element.name == "nav" or _role(element) == "navigation"
 
 
+# Sectioning elements. Per the HTML-ARIA mapping, a <header>/<footer> only maps
+# to the banner/contentinfo landmark when it is NOT nested inside one of these.
+_SECTIONING = ["article", "aside", "main", "nav", "section"]
+
+
+def _is_banner(element: "Tag") -> bool:
+    if _role(element) == "banner":
+        return True
+    if element.name == "header":
+        return element.find_parent(_SECTIONING) is None
+    return False
+
+
+def _is_contentinfo(element: "Tag") -> bool:
+    if _role(element) == "contentinfo":
+        return True
+    if element.name == "footer":
+        return element.find_parent(_SECTIONING) is None
+    return False
+
+
 class MainLandmarkCheck(Check):
     """Check that the page exposes exactly one main landmark.
 
@@ -97,3 +118,51 @@ class SkipLinkCheck(Check):
                 'e.g. <a href="#main">Skip to main content</a>.',
             )
         ]
+
+
+class LandmarkUniquenessCheck(Check):
+    """Check that top-level banner and contentinfo landmarks are unique.
+
+    A page has at most one banner (site ``<header>`` / ``role="banner"``) and one
+    contentinfo (site ``<footer>`` / ``role="contentinfo"``). Duplicates make
+    landmark navigation ambiguous for assistive-technology users. A ``<header>``
+    or ``<footer>`` nested inside sectioning content (article, aside, main, nav,
+    section) is not a banner/contentinfo landmark and is not counted.
+    """
+
+    id = "landmark-uniqueness"
+    criterion = "1.3.1"
+    criterion_name = "Info and Relationships"
+    description = "Banner and contentinfo landmarks must each be unique."
+
+    def run(self, soup: "BeautifulSoup") -> list[Finding]:
+        findings: list[Finding] = []
+        elements = [el for el in soup.find_all(True) if not is_hidden(el)]
+
+        banners = [el for el in elements if _is_banner(el)]
+        if len(banners) > 1:
+            findings.append(
+                self._finding(
+                    Severity.ERROR,
+                    f"The page has {len(banners)} banner landmarks; a page "
+                    "should have at most one.",
+                    'Keep a single top-level <header> / role="banner" and '
+                    "scope the others (e.g. move them inside a section).",
+                    element_snippet(banners[1]),
+                )
+            )
+
+        infos = [el for el in elements if _is_contentinfo(el)]
+        if len(infos) > 1:
+            findings.append(
+                self._finding(
+                    Severity.ERROR,
+                    f"The page has {len(infos)} contentinfo landmarks; a page "
+                    "should have at most one.",
+                    'Keep a single top-level <footer> / role="contentinfo" and '
+                    "scope the others (e.g. move them inside a section).",
+                    element_snippet(infos[1]),
+                )
+            )
+
+        return findings

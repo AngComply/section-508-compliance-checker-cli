@@ -396,7 +396,8 @@ def test_run_all_deduplicates_identical_findings():
 
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
-    assert checks_run == 14
-    # Every check in the fixture produces at least one finding.
-    assert checks_passed == 0
+    assert checks_run == 16
+    # Every static check fires on the fixture; the two Selenium-only checks
+    # (icon-contrast, focus-visible) have no data in file mode and pass.
+    assert checks_passed == 2
     assert len(findings) >= 14

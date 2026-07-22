@@ -204,9 +204,11 @@ Sixteen checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 1.4.11, 2.4.1,
 
 ## Portfolio context
 
-This tool is part of a broader portfolio demonstrating hands-on Section 508
-testing and remediation capability. See [docs/Portfolio.md](docs/Portfolio.md)
-for the full portfolio overview.
+This is a recent, open-source reference implementation of the Section 508
+testing and automation patterns I have applied across a decade of federal
+accessibility engagements — built to make my approach visible as I take on
+independent consulting work. It is one of several projects in my
+[Section 508 SME & Compliance Analyst portfolio](https://github.com/AngComply).
 
 ## Disclaimer
 

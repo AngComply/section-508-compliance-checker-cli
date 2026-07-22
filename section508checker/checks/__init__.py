@@ -16,7 +16,12 @@ from .forms import FormLabelCheck
 from .frames import FrameTitleCheck
 from .headings import HeadingStructureCheck
 from .images import ImageAltTextCheck
-from .landmarks import LandmarkUniquenessCheck, MainLandmarkCheck, SkipLinkCheck
+from .landmarks import (
+    LandmarkUniquenessCheck,
+    MainLandmarkCheck,
+    NavigationNameCheck,
+    SkipLinkCheck,
+)
 from .links import LinkTextCheck
 from .tables import TableHeaderCheck
 
@@ -36,6 +41,7 @@ CHECKS: list[type[Check]] = [
     MainLandmarkCheck,
     SkipLinkCheck,
     LandmarkUniquenessCheck,
+    NavigationNameCheck,
     ColorContrastCheck,
 ]
 

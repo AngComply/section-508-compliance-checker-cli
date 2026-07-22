@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .base import Check, Finding, Severity, element_snippet
-from .naming import attr_text, is_hidden
+from .naming import attr_text, has_aria_name, is_hidden
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from bs4 import BeautifulSoup
@@ -166,3 +166,39 @@ class LandmarkUniquenessCheck(Check):
             )
 
         return findings
+
+
+class NavigationNameCheck(Check):
+    """Check that multiple navigation landmarks are individually named.
+
+    When a page exposes more than one navigation landmark (``<nav>`` /
+    ``role="navigation"``), each needs a distinct accessible name (``aria-label``
+    or ``aria-labelledby``) so assistive-technology users can tell them apart in
+    the landmarks list. A single, unnamed navigation landmark is fine.
+    """
+
+    id = "nav-landmark-name"
+    criterion = "1.3.1"
+    criterion_name = "Info and Relationships"
+    description = "Multiple navigation landmarks must each have an accessible name."
+
+    def run(self, soup: "BeautifulSoup") -> list[Finding]:
+        navs = [el for el in soup.find_all(True) if _is_nav(el) and not is_hidden(el)]
+        if len(navs) <= 1:
+            return []  # a single navigation landmark needs no distinguishing name
+
+        unnamed = [el for el in navs if not has_aria_name(el)]
+        if not unnamed:
+            return []
+
+        return [
+            self._finding(
+                Severity.WARNING,
+                f"The page has {len(navs)} navigation landmarks but "
+                f"{len(unnamed)} lack an accessible name, so assistive-technology "
+                "users cannot tell them apart.",
+                'Give each <nav> a distinct name, e.g. aria-label="Primary" and '
+                'aria-label="Footer".',
+                element_snippet(unnamed[0]),
+            )
+        ]

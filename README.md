@@ -47,6 +47,7 @@ finding produces a structured, human-readable report an analyst can act on.
     [Roadmap](#roadmap)
   - Missing or duplicate main landmark (WCAG 1.3.1)
   - Duplicate banner / contentinfo landmarks (WCAG 1.3.1)
+  - Multiple navigation landmarks without accessible names (WCAG 1.3.1)
   - Missing skip link when navigation is present (WCAG 2.4.1)
 - **Two rendering backends:**
   - **BeautifulSoup** for fast static-HTML parsing
@@ -166,14 +167,14 @@ NVDA, VoiceOver), keyboard-only navigation, and color-contrast analysis.
 - [x] CI workflow (GitHub Actions: ruff lint + pytest matrix)
 - [x] Color-contrast analysis (WCAG 1.4.3) — full-page (Selenium computed
       styles) and inline (static)
-- [x] Landmark checks — main, banner/contentinfo uniqueness, skip link
-      (WCAG 1.3.1 / 2.4.1)
-- [ ] Non-text contrast (WCAG 1.4.11) and navigation-landmark naming checks
+- [x] Landmark checks — main, banner/contentinfo uniqueness, navigation
+      naming, skip link (WCAG 1.3.1 / 2.4.1)
+- [ ] Non-text contrast (WCAG 1.4.11)
 - [ ] Pixel-sampling for backgrounds painted by overlays, `::before`
       pseudo-elements, or images that lie outside the text's ancestor chain
       (current contrast checks skip these rather than guess)
 
-Twelve checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 2.4.1, 2.4.2,
+Thirteen checks ship today, mapped to WCAG 1.1.1, 1.3.1, 1.4.3, 2.4.1, 2.4.2,
 2.4.4, 3.1.1, and 4.1.2. See the source in
 [`section508checker/checks/`](section508checker/checks/).
 

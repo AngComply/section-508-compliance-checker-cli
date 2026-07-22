@@ -30,6 +30,7 @@ from section508checker.checks.landmarks import (
     SkipLinkCheck,
 )
 from section508checker.checks.links import LinkTextCheck
+from section508checker.checks.nontext_contrast import NonTextContrastCheck
 from section508checker.checks.tables import TableHeaderCheck
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "sample_inaccessible.html"
@@ -270,6 +271,66 @@ def test_multiple_named_navs_pass():
     assert NavigationNameCheck().run(_soup(markup)) == []
 
 
+def test_nontext_contrast_low_border_flagged_inline(sample):
+    findings = NonTextContrastCheck().run(sample)
+    assert len(findings) == 1
+    assert findings[0].criterion == "1.4.11"
+    assert findings[0].severity is Severity.WARNING
+
+
+def test_nontext_contrast_strong_border_passes_inline():
+    # A dark border (#595959, ~7:1 on white) makes the field perceivable.
+    markup = (
+        '<div style="background-color:#ffffff">'
+        '<input aria-label="x" style="border:1px solid #595959;'
+        'background-color:#ffffff"></div>'
+    )
+    assert NonTextContrastCheck().run(_soup(markup)) == []
+
+
+def test_nontext_contrast_fill_difference_passes_inline():
+    # No border, but a dark fill on a white page delineates the field.
+    markup = (
+        '<div style="background-color:#ffffff">'
+        '<input aria-label="x" style="border:none;'
+        'background-color:#333333"></div>'
+    )
+    assert NonTextContrastCheck().run(_soup(markup)) == []
+
+
+def test_nontext_contrast_skips_without_resolvable_surround():
+    # No inline background anywhere -> surrounding colour unknown -> skip.
+    markup = '<input aria-label="x" style="border:1px solid #dddddd">'
+    assert NonTextContrastCheck().run(_soup(markup)) == []
+
+
+def test_nontext_contrast_computed_mode():
+    check = NonTextContrastCheck()
+    check.component_styles = [
+        {  # light border + white fill on white page -> imperceptible
+            "borderColor": "rgb(221, 221, 221)",
+            "borderStyle": "solid",
+            "borderWidth": 1,
+            "background": "rgb(255, 255, 255)",
+            "boxShadow": "none",
+            "surround": "rgb(255, 255, 255)",
+            "snippet": "<input>",
+        },
+        {  # strong border -> perceivable, no finding
+            "borderColor": "rgb(89, 89, 89)",
+            "borderStyle": "solid",
+            "borderWidth": 1,
+            "background": "rgb(255, 255, 255)",
+            "boxShadow": "none",
+            "surround": "rgb(255, 255, 255)",
+            "snippet": "<input>",
+        },
+    ]
+    findings = check.run(None)
+    assert len(findings) == 1
+    assert findings[0].criterion == "1.4.11"
+
+
 def test_required_ratio_thresholds():
     assert required_ratio(None, bold=False) == 4.5  # unknown -> stricter
     assert required_ratio(16.0, bold=False) == 4.5  # normal text
@@ -335,7 +396,7 @@ def test_run_all_deduplicates_identical_findings():
 
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
-    assert checks_run == 13
+    assert checks_run == 14
     # Every check in the fixture produces at least one finding.
     assert checks_passed == 0
-    assert len(findings) >= 13
+    assert len(findings) >= 14

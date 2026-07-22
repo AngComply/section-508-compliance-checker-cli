@@ -34,6 +34,12 @@
     <label for="email">Email address</label>
     <input type="email" id="email">
 
+    <!-- Field whose border barely contrasts with its background (fail 1.4.11);
+         aria-label keeps it out of the form-label check -->
+    <div style="background-color: #ffffff">
+      <input aria-label="Coupon code" style="border: 1px solid #dddddd; background-color: #ffffff;">
+    </div>
+
     <!-- Empty link (fail) + generic link (warn) + descriptive link (pass) -->
     <a href="#"></a>
     <a href="/report">click here</a>

@@ -26,6 +26,7 @@ from section508checker.checks.images import ImageAltTextCheck
 from section508checker.checks.landmarks import (
     LandmarkUniquenessCheck,
     MainLandmarkCheck,
+    NavigationNameCheck,
     SkipLinkCheck,
 )
 from section508checker.checks.links import LinkTextCheck
@@ -250,6 +251,25 @@ def test_nested_header_footer_are_not_landmarks():
     assert LandmarkUniquenessCheck().run(_soup(markup)) == []
 
 
+def test_single_nav_needs_no_name():
+    assert NavigationNameCheck().run(_soup("<nav><a href='/a'>A</a></nav>")) == []
+
+
+def test_multiple_unnamed_navs_flagged(sample):
+    findings = NavigationNameCheck().run(sample)
+    assert len(findings) == 1
+    assert findings[0].severity is Severity.WARNING
+    assert "navigation landmarks" in findings[0].message
+
+
+def test_multiple_named_navs_pass():
+    markup = (
+        '<body><nav aria-label="Primary"><a href="/a">A</a></nav>'
+        '<nav aria-label="Footer"><a href="/b">B</a></nav></body>'
+    )
+    assert NavigationNameCheck().run(_soup(markup)) == []
+
+
 def test_required_ratio_thresholds():
     assert required_ratio(None, bold=False) == 4.5  # unknown -> stricter
     assert required_ratio(16.0, bold=False) == 4.5  # normal text
@@ -315,7 +335,7 @@ def test_run_all_deduplicates_identical_findings():
 
 def test_run_all_aggregates_counts(sample):
     findings, checks_run, checks_passed = run_all(sample)
-    assert checks_run == 12
+    assert checks_run == 13
     # Every check in the fixture produces at least one finding.
     assert checks_passed == 0
-    assert len(findings) >= 12
+    assert len(findings) >= 13

@@ -112,7 +112,9 @@ def main(argv: list[str] | None = None) -> int:
 
     soup = BeautifulSoup(page.html, "html.parser")
     findings, checks_run, checks_passed = run_all(
-        soup, computed_styles=page.computed_styles
+        soup,
+        computed_styles=page.computed_styles,
+        component_styles=page.component_styles,
     )
     report = Report(
         target=args.url or args.file,

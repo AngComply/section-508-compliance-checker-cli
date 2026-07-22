@@ -37,10 +37,15 @@ class LoadedPage:
         computed_styles: One record per text-bearing element with its
             browser-computed colours and font metrics, or ``None`` when the
             source cannot provide computed styles (file/static backends).
+        component_styles: One record per editable form control with its
+            browser-computed border, background, and surrounding background,
+            used for non-text contrast (WCAG 1.4.11). ``None`` for non-browser
+            backends.
     """
 
     html: str
     computed_styles: list[dict] | None = None
+    component_styles: list[dict] | None = None
 
 
 # JavaScript executed in the live page to collect computed text styles. For each
@@ -116,7 +121,30 @@ for (const el of elements) {
     snippet: (el.outerHTML || '').slice(0, 200),
   });
 }
-return results;
+// Editable text fields, for non-text contrast (WCAG 1.4.11).
+const TEXT_INPUT_TYPES = [
+  '', 'text', 'email', 'password', 'search', 'tel', 'url', 'number',
+  'date', 'datetime-local', 'month', 'week', 'time',
+];
+const components = [];
+const controls = document.body
+  ? document.body.querySelectorAll('input, select, textarea')
+  : [];
+for (const el of controls) {
+  if (el.tagName === 'INPUT' && !TEXT_INPUT_TYPES.includes(el.type)) continue;
+  const cs = getComputedStyle(el);
+  if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+  components.push({
+    borderColor: cs.borderTopColor,
+    borderStyle: cs.borderTopStyle,
+    borderWidth: parseFloat(cs.borderTopWidth) || 0,
+    background: cs.backgroundColor,
+    boxShadow: cs.boxShadow,
+    surround: effectiveBackground(el.parentElement || el),
+    snippet: (el.outerHTML || '').slice(0, 200),
+  });
+}
+return { text: results, components: components };
 """
 
 
@@ -212,8 +240,12 @@ def _load_selenium(url: str, timeout: int) -> LoadedPage:
         driver.set_page_load_timeout(timeout)
         driver.get(url)
         html = driver.page_source
-        computed_styles = driver.execute_script(_COMPUTED_STYLES_JS)
-        return LoadedPage(html=html, computed_styles=computed_styles)
+        extracted = driver.execute_script(_COMPUTED_STYLES_JS)
+        return LoadedPage(
+            html=html,
+            computed_styles=extracted.get("text", []),
+            component_styles=extracted.get("components", []),
+        )
     except WebDriverException as exc:
         raise LoaderError(
             "Selenium could not render the page. Ensure Chrome/Chromium is "

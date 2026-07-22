@@ -23,6 +23,7 @@ from .landmarks import (
     SkipLinkCheck,
 )
 from .links import LinkTextCheck
+from .nontext_contrast import NonTextContrastCheck
 from .tables import TableHeaderCheck
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -43,17 +44,20 @@ CHECKS: list[type[Check]] = [
     LandmarkUniquenessCheck,
     NavigationNameCheck,
     ColorContrastCheck,
+    NonTextContrastCheck,
 ]
 
 
 def run_all(
     soup: "BeautifulSoup",
     computed_styles: list[dict] | None = None,
+    component_styles: list[dict] | None = None,
 ) -> tuple[list[Finding], int, int]:
     """Run every registered check against ``soup``.
 
-    When ``computed_styles`` is provided (from the Selenium backend), the
-    colour-contrast check evaluates the full page rather than inline styles only.
+    When ``computed_styles`` / ``component_styles`` are provided (from the
+    Selenium backend), the text- and non-text-contrast checks evaluate the full
+    page rather than inline styles only.
 
     Returns a tuple of ``(findings, checks_run, checks_passed)`` where a check
     "passes" when it produces no findings.
@@ -62,9 +66,11 @@ def run_all(
     passed = 0
     for check_cls in CHECKS:
         check = check_cls()
-        # The contrast check can use browser-computed styles when available.
+        # Contrast checks can use browser-computed styles when available.
         if isinstance(check, ColorContrastCheck):
             check.computed_styles = computed_styles
+        elif isinstance(check, NonTextContrastCheck):
+            check.component_styles = component_styles
         result = check.run(soup)
         if result:
             findings.extend(result)
